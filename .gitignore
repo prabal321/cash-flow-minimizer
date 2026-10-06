@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+
+# env files — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# build output
+dist/
+build/
+
+# OS
+.DS_Store
+
+# Expo
+frontend/.expo/
+frontend/android/
+frontend/ios/
+
+# logs
+*.log
+npm-debug.log*
