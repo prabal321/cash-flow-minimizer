@@ -10,14 +10,13 @@ export async function createContext({ req }: { req: Request }): Promise<Context>
     return { user: null, supabase: serviceClient }
   }
 
-  // Verify the user's JWT using the anon client (no DB queries here)
+  // Verify the user's JWT using the anon client 
   const { data: { user }, error } = await anonClient.auth.getUser(token)
 
   if (error || !user) {
     return { user: null, supabase: serviceClient }
   }
 
-  // All database queries use the service-role client.
   // The service layer enforces authorization (requireAuth, membership checks, etc.).
   return { user, supabase: serviceClient }
 }

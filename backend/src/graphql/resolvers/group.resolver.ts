@@ -91,7 +91,7 @@ export const groupResolvers = {
     },
   },
 
-  // ── Field resolvers on Group ────────────────────────────
+  //  Field resolvers 
 
   Group: {
     createdBy: async (parent: { created_by: string }, _: unknown, context: Context) => {
