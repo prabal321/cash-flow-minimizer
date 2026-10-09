@@ -1,8 +1,9 @@
-import React from 'react'
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native'
-import { useQuery } from '@apollo/client/react'
+import React, { useState } from 'react'
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, RefreshControl, TouchableOpacity, Alert, Platform } from 'react-native'
+import { useQuery, useMutation } from '@apollo/client/react'
 import { RouteProp } from '@react-navigation/native'
 import { GET_GROUP_BALANCES, GET_GROUP_SETTLEMENTS } from '../graphql/queries'
+import { CREATE_EXPENSE } from '../graphql/mutations'
 import { COLORS, SPACING } from '../constants'
 import type { AppStackParamList, Balance, Settlement } from '../types'
 
@@ -10,14 +11,64 @@ type Props = { route: RouteProp<AppStackParamList, 'Settlements'> }
 
 export default function SettlementsScreen({ route }: Props) {
   const { groupId } = route.params
+  const [settlingKey, setSettlingKey] = useState<string | null>(null)
 
   const { data: rawBalData, loading: balLoading, refetch: refetchBal } = useQuery(GET_GROUP_BALANCES, { variables: { groupId } })
   const { data: rawSetData, loading: setLoading, refetch: refetchSet } = useQuery(GET_GROUP_SETTLEMENTS, { variables: { groupId } })
   const balData = rawBalData as any
   const setData = rawSetData as any
 
+  const [createExpense] = useMutation(CREATE_EXPENSE, {
+    refetchQueries: [
+      { query: GET_GROUP_BALANCES, variables: { groupId } },
+      { query: GET_GROUP_SETTLEMENTS, variables: { groupId } },
+    ],
+  })
+
   const loading = balLoading || setLoading
   function refetch() { refetchBal(); refetchSet() }
+
+  async function doSettle(s: Settlement) {
+    const key = `${s.from.id}-${s.to.id}`
+    setSettlingKey(key)
+    try {
+      await createExpense({
+        variables: {
+          input: {
+            groupId,
+            description: `Settlement: ${s.from.name} → ${s.to.name}`,
+            amount: s.amount,
+            paidBy: s.from.id,
+            splitType: 'UNEQUAL',
+            participantIds: [s.from.id, s.to.id],
+            splits: [
+              { userId: s.from.id, amount: 0 },
+              { userId: s.to.id, amount: s.amount },
+            ],
+          },
+        },
+      })
+    } catch (err: any) {
+      Alert.alert('Error', err.message ?? 'Failed to record settlement')
+    } finally {
+      setSettlingKey(null)
+    }
+  }
+
+  function confirmSettle(s: Settlement) {
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Mark ₹${s.amount.toFixed(2)} from ${s.from.name} to ${s.to.name} as settled?`)) doSettle(s)
+      return
+    }
+    Alert.alert(
+      'Settle Up',
+      `Record that ${s.from.name} paid ₹${s.amount.toFixed(2)} to ${s.to.name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Confirm', onPress: () => doSettle(s) },
+      ]
+    )
+  }
 
   function balanceColor(status: string) {
     if (status === 'OWED') return COLORS.success
@@ -73,16 +124,32 @@ export default function SettlementsScreen({ route }: Props) {
           {(setData?.groupSettlements ?? []).length === 0 ? (
             <View style={styles.emptyRow}><Text style={styles.emptyText}>Everyone is settled up 🎉</Text></View>
           ) : (
-            (setData?.groupSettlements ?? []).map((s: Settlement, i: number) => (
-              <View key={`${s.from.id}-${s.to.id}`} style={[styles.settlementRow, i < (setData?.groupSettlements?.length ?? 0) - 1 && styles.divider]}>
-                <View style={styles.settlementNames}>
-                  <Text style={styles.settlementFrom}>{s.from.name}</Text>
-                  <Text style={styles.settlementArrow}>→</Text>
-                  <Text style={styles.settlementTo}>{s.to.name}</Text>
+            (setData?.groupSettlements ?? []).map((s: Settlement, i: number) => {
+              const key = `${s.from.id}-${s.to.id}`
+              const isSettling = settlingKey === key
+              return (
+                <View key={key} style={[styles.settlementRow, i < (setData?.groupSettlements?.length ?? 0) - 1 && styles.divider]}>
+                  <View style={styles.settlementTop}>
+                    <View style={styles.settlementNames}>
+                      <Text style={styles.settlementFrom}>{s.from.name}</Text>
+                      <Text style={styles.settlementArrow}>→</Text>
+                      <Text style={styles.settlementTo}>{s.to.name}</Text>
+                    </View>
+                    <Text style={styles.settlementAmount}>₹{s.amount.toFixed(2)}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.settleBtn, isSettling && styles.settleBtnDisabled]}
+                    onPress={() => confirmSettle(s)}
+                    disabled={isSettling}
+                  >
+                    {isSettling
+                      ? <ActivityIndicator size="small" color="#fff" />
+                      : <Text style={styles.settleBtnText}>Settle Up</Text>
+                    }
+                  </TouchableOpacity>
                 </View>
-                <Text style={styles.settlementAmount}>₹{s.amount.toFixed(2)}</Text>
-              </View>
-            ))
+              )
+            })
           )}
         </View>
       )}
@@ -107,12 +174,20 @@ const styles = StyleSheet.create({
   userName: { fontSize: 15, fontWeight: '600', color: COLORS.text },
   balanceLabel: { fontSize: 12, marginTop: 2 },
   netBalance: { fontSize: 16, fontWeight: '700' },
-  settlementRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: SPACING.md },
+  settlementRow: { padding: SPACING.md },
+  settlementTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   settlementNames: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
   settlementFrom: { fontSize: 15, fontWeight: '600', color: COLORS.text },
   settlementArrow: { fontSize: 16, color: COLORS.textSecondary },
   settlementTo: { fontSize: 15, fontWeight: '600', color: COLORS.text },
   settlementAmount: { fontSize: 16, fontWeight: '700', color: COLORS.primary },
+  settleBtn: {
+    marginTop: SPACING.sm, backgroundColor: COLORS.primary,
+    borderRadius: 8, paddingVertical: 8, paddingHorizontal: SPACING.md,
+    alignItems: 'center',
+  },
+  settleBtnDisabled: { opacity: 0.6 },
+  settleBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   divider: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
   emptyRow: { padding: SPACING.lg, alignItems: 'center' },
   emptyText: { fontSize: 14, color: COLORS.textSecondary },

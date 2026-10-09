@@ -52,6 +52,7 @@ export interface Expense {
   paidBy: User
   splits: ExpenseSplit[]
   splitCount: number
+  splitType: 'EQUAL' | 'UNEQUAL'
   createdAt: string
   updatedAt: string
 }
@@ -85,7 +86,7 @@ export type RootStackParamList = {
 export type AppStackParamList = {
   Groups: undefined
   GroupDetail: { groupId: string; groupName: string }
-  AddExpense: { groupId: string }
+  AddExpense: { groupId: string; expenseId?: string }
   Settlements: { groupId: string }
   Profile: undefined
   CreateGroup: undefined

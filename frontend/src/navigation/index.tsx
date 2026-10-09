@@ -36,7 +36,8 @@ function GroupsStack() {
       <AppStack.Screen name="GroupDetail" component={GroupDetailScreen}
         options={({ route }) => ({ title: (route.params as any).groupName })} />
       <AppStack.Screen name="CreateGroup" component={CreateGroupScreen} options={{ title: 'New Group' }} />
-      <AppStack.Screen name="AddExpense" component={AddExpenseScreen} options={{ title: 'Add Expense' }} />
+      <AppStack.Screen name="AddExpense" component={AddExpenseScreen}
+        options={({ route }) => ({ title: (route.params as any).expenseId ? 'Edit Expense' : 'Add Expense' })} />
       <AppStack.Screen name="ExpenseDetail" component={ExpenseDetailScreen} options={{ title: 'Expense Details' }} />
       <AppStack.Screen name="Settlements" component={SettlementsScreen} options={{ title: 'Settlements' }} />
       <AppStack.Screen name="InviteMember" component={InviteMemberScreen} options={{ title: 'Invite Member' }} />

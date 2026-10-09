@@ -6,8 +6,8 @@ import {
 import { useQuery, useMutation } from '@apollo/client/react'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { RouteProp } from '@react-navigation/native'
-import { GET_GROUP } from '../graphql/queries'
-import { CREATE_EXPENSE } from '../graphql/mutations'
+import { GET_GROUP, GET_EXPENSE } from '../graphql/queries'
+import { CREATE_EXPENSE, UPDATE_EXPENSE } from '../graphql/mutations'
 import { COLORS, SPACING } from '../constants'
 import { useAppSelector } from '../hooks/useAppDispatch'
 import type { AppStackParamList } from '../types'
@@ -18,12 +18,19 @@ type Props = {
 }
 
 export default function AddExpenseScreen({ navigation, route }: Props) {
-  const { groupId } = route.params
+  const { groupId, expenseId } = route.params
+  const isEditing = !!expenseId
   const currentUser = useAppSelector((s) => s.auth.user)
 
   const { data: rawGroupData } = useQuery(GET_GROUP, { variables: { id: groupId } })
-  const data = rawGroupData as any
-  const members: any[] = data?.group?.members ?? []
+  const groupData = rawGroupData as any
+  const members: any[] = groupData?.group?.members ?? []
+
+  const { data: rawExpenseData } = useQuery(GET_EXPENSE, {
+    variables: { id: expenseId },
+    skip: !expenseId,
+  })
+  const existingExpense = (rawExpenseData as any)?.expense
 
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
@@ -31,17 +38,38 @@ export default function AddExpenseScreen({ navigation, route }: Props) {
   const [splitType, setSplitType] = useState<'EQUAL' | 'UNEQUAL'>('EQUAL')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [unequalAmounts, setUnequalAmounts] = useState<Record<string, string>>({})
+  const [initialised, setInitialised] = useState(false)
 
-  // Pre-select all members on load
+  // Pre-populate from existing expense when editing
   useEffect(() => {
-    if (members.length && selectedIds.length === 0) {
+    if (isEditing && existingExpense && !initialised) {
+      setDescription(existingExpense.description)
+      setAmount(existingExpense.amount.toString())
+      setPaidById(existingExpense.paidBy.id)
+      setSplitType(existingExpense.splitType ?? 'EQUAL')
+      const ids = existingExpense.splits.map((s: any) => s.user.id)
+      setSelectedIds(ids)
+      const amounts: Record<string, string> = {}
+      existingExpense.splits.forEach((s: any) => { amounts[s.user.id] = s.amount.toString() })
+      setUnequalAmounts(amounts)
+      setInitialised(true)
+    }
+  }, [existingExpense, isEditing, initialised])
+
+  // Pre-select all members on load (create mode only)
+  useEffect(() => {
+    if (!isEditing && members.length && selectedIds.length === 0) {
       setSelectedIds(members.map((m) => m.user.id))
     }
   }, [members])
 
-  const [createExpense, { loading }] = useMutation(CREATE_EXPENSE, {
+  const [createExpense, { loading: creating }] = useMutation(CREATE_EXPENSE, {
     refetchQueries: [{ query: GET_GROUP, variables: { id: groupId } }],
   })
+  const [updateExpense, { loading: updating }] = useMutation(UPDATE_EXPENSE, {
+    refetchQueries: [{ query: GET_GROUP, variables: { id: groupId } }],
+  })
+  const loading = creating || updating
 
   function toggleParticipant(userId: string) {
     setSelectedIds((prev) =>
@@ -70,7 +98,6 @@ export default function AddExpenseScreen({ navigation, route }: Props) {
     }
 
     const input: any = {
-      groupId,
       description: description.trim(),
       amount: totalAmount,
       paidBy: paidById,
@@ -83,10 +110,14 @@ export default function AddExpenseScreen({ navigation, route }: Props) {
     }
 
     try {
-      await createExpense({ variables: { input } })
+      if (isEditing) {
+        await updateExpense({ variables: { id: expenseId, input } })
+      } else {
+        await createExpense({ variables: { input: { ...input, groupId } } })
+      }
       navigation.goBack()
     } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Failed to create expense')
+      Alert.alert('Error', err.message ?? `Failed to ${isEditing ? 'update' : 'create'} expense`)
     }
   }
 
@@ -176,7 +207,7 @@ export default function AddExpenseScreen({ navigation, route }: Props) {
         )}
 
         <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleSubmit} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Add Expense</Text>}
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{isEditing ? 'Update Expense' : 'Add Expense'}</Text>}
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

@@ -65,6 +65,7 @@ export const typeDefs = `#graphql
     groupId: ID!
     description: String!
     amount: Float!
+    splitType: SplitType!
     paidBy: User!
     splits: [ExpenseSplit!]!
     splitCount: Int!

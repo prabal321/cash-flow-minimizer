@@ -110,6 +110,7 @@ export async function createExpense(
       amount: input.amount,
       paid_by: input.paidBy,
       split_count: uniqueParticipants.length,
+      split_type: input.splitType.toLowerCase(),
     })
     .select()
     .single()
@@ -192,6 +193,7 @@ export async function updateExpense(
       amount: newAmount,
       paid_by: newPaidBy,
       split_count: newParticipantIds?.length ?? existing.split_count,
+      split_type: newSplitType.toLowerCase(),
     })
     .eq('id', expenseId)
     .select()

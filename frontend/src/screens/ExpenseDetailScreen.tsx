@@ -25,6 +25,15 @@ export default function ExpenseDetailScreen({ route }: Props) {
       <Text style={styles.paidBy}>Paid by <Text style={styles.paidByName}>{expense.paidBy.name}</Text></Text>
       <Text style={styles.date}>{new Date(expense.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
 
+      <View style={styles.badgeRow}>
+        <View style={[styles.badge, expense.splitType === 'EQUAL' ? styles.badgeEqual : styles.badgeUnequal]}>
+          <Text style={[styles.badgeText, expense.splitType === 'EQUAL' ? styles.badgeEqualText : styles.badgeUnequalText]}>
+            {expense.splitType === 'EQUAL' ? 'Equal Split' : 'Unequal Split'}
+          </Text>
+        </View>
+        <Text style={styles.splitCount}>{expense.splits.length} people</Text>
+      </View>
+
       <Text style={styles.sectionTitle}>Individual shares</Text>
       <View style={styles.card}>
         {expense.splits.map((split: any, i: number) => (
@@ -51,6 +60,14 @@ const styles = StyleSheet.create({
   paidBy: { fontSize: 15, color: COLORS.textSecondary },
   paidByName: { fontWeight: '600', color: COLORS.text },
   date: { fontSize: 13, color: COLORS.textSecondary },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginTop: SPACING.xs },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  badgeEqual: { backgroundColor: '#EFF6FF' },
+  badgeUnequal: { backgroundColor: '#FFF7ED' },
+  badgeText: { fontSize: 12, fontWeight: '700' },
+  badgeEqualText: { color: '#1D4ED8' },
+  badgeUnequalText: { color: '#C2410C' },
+  splitCount: { fontSize: 13, color: COLORS.textSecondary },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text, marginTop: SPACING.sm },
   card: {
     backgroundColor: COLORS.surface, borderRadius: 12,

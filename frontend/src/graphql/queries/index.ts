@@ -59,6 +59,7 @@ export const GET_EXPENSE = gql`
       id
       description
       amount
+      splitType
       createdAt
       paidBy { id name }
       splits {

@@ -56,6 +56,7 @@ export const expenseResolvers = {
 
   Expense: {
     groupId: (parent: { group_id: string }) => parent.group_id,
+    splitType: (parent: { split_type: string }) => parent.split_type?.toUpperCase() ?? 'EQUAL',
     splitCount: (parent: { split_count: number }) => parent.split_count,
     createdAt: (parent: { created_at: string }) => parent.created_at,
     updatedAt: (parent: { updated_at: string }) => parent.updated_at,

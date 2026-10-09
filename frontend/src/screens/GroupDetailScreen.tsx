@@ -119,18 +119,35 @@ export default function GroupDetailScreen({ navigation, route }: Props) {
       ) : (
         <View style={styles.card}>
           {group.expenses.map((e: Expense, i: number) => (
-            <TouchableOpacity
-              key={e.id}
-              style={[styles.expenseRow, i < group.expenses.length - 1 && styles.divider]}
-              onPress={() => navigation.navigate('ExpenseDetail', { expenseId: e.id, groupId })}
-              onLongPress={() => confirmDelete(e)}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={styles.expenseDesc}>{e.description}</Text>
-                <Text style={styles.expensePaidBy}>Paid by {(e as any).paidBy.name}</Text>
+            <View key={e.id} style={[styles.expenseRow, i < group.expenses.length - 1 && styles.divider]}>
+              <View style={styles.expenseTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.expenseDesc}>{e.description}</Text>
+                  <Text style={styles.expensePaidBy}>Paid by {(e as any).paidBy.name}</Text>
+                </View>
+                <Text style={styles.expenseAmount}>₹{e.amount.toFixed(2)}</Text>
               </View>
-              <Text style={styles.expenseAmount}>₹{e.amount.toFixed(2)}</Text>
-            </TouchableOpacity>
+              <View style={styles.expenseActions}>
+                <TouchableOpacity
+                  style={styles.expenseBtn}
+                  onPress={() => navigation.navigate('ExpenseDetail', { expenseId: e.id, groupId })}
+                >
+                  <Text style={styles.expenseBtnText}>View Details</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.expenseBtn, styles.expenseBtnEdit]}
+                  onPress={() => navigation.navigate('AddExpense', { groupId, expenseId: e.id })}
+                >
+                  <Text style={[styles.expenseBtnText, styles.expenseBtnEditText]}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.expenseBtn, styles.expenseBtnDelete]}
+                  onPress={() => confirmDelete(e)}
+                >
+                  <Text style={[styles.expenseBtnText, styles.expenseBtnDeleteText]}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           ))}
         </View>
       )}
@@ -171,10 +188,21 @@ const styles = StyleSheet.create({
   avatarText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   memberName: { fontSize: 15, fontWeight: '600', color: COLORS.text },
   memberRole: { fontSize: 12, color: COLORS.textSecondary, textTransform: 'capitalize' },
-  expenseRow: { flexDirection: 'row', alignItems: 'center', padding: SPACING.md },
+  expenseRow: { padding: SPACING.md },
+  expenseTop: { flexDirection: 'row', alignItems: 'center' },
   expenseDesc: { fontSize: 15, fontWeight: '600', color: COLORS.text },
   expensePaidBy: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
   expenseAmount: { fontSize: 16, fontWeight: '700', color: COLORS.text },
+  expenseActions: { flexDirection: 'row', gap: 6, marginTop: SPACING.sm },
+  expenseBtn: {
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6,
+    backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border,
+  },
+  expenseBtnEdit: { borderColor: COLORS.primary },
+  expenseBtnDelete: { borderColor: COLORS.error },
+  expenseBtnText: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary },
+  expenseBtnEditText: { color: COLORS.primary },
+  expenseBtnDeleteText: { color: COLORS.error },
   divider: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
   emptyExpenses: {
     backgroundColor: COLORS.surface, borderRadius: 12, padding: SPACING.xl, alignItems: 'center',
